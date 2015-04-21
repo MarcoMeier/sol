@@ -59,10 +59,16 @@ private:
         luacall(n, 0);
     }
 
+    bool has_reference = false;
+
 public:
     function() = default;
     function(lua_State* L, int index = -1): reference(L, index) {
-        type_assert(L, index, type::function);
+        if (lua_type(L, index) != static_cast<int>(type::none) &&
+          lua_type(L, index) != static_cast<int>(type::nil)) {
+            type_assert(L, index, type::function);
+            has_reference = true;
+        }
     }
     function(const function&) = default;
     function& operator=(const function&) = default;
@@ -82,6 +88,10 @@ public:
         push();
         stack::push_args(state(), std::forward<Args>(args)...);
         return invoke(types<Ret...>(), sizeof...(Args));
+    }
+
+    operator bool() const {
+        return has_reference;
     }
 };
 
