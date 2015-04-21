@@ -123,6 +123,10 @@ struct getter<T*> {
     static T* get(lua_State* L, int index = -1) {
         void* udata = lua_touserdata(L, index);
         T** obj = static_cast<T**>(udata);
+
+	if (obj == nullptr)
+		return nullptr;
+
         return *obj;
     }
 };
