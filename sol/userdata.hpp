@@ -270,7 +270,7 @@ private:
             if(indexmetamethod != meta_variable_names.end()) {
                 auto idxptr = detail::make_unique<userdata_indexing_function<function_type, T>>(name, func);
                 switch(std::distance(indexmetamethod, meta_variable_names.end())) {
-                case 0:
+                case 2:
                     index = &(idxptr->functions);
                     break;
                 case 1:
