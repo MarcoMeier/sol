@@ -70,17 +70,37 @@ struct return_forward {
         return value;
     }
 };
+template<typename... TArgs>
+struct is_pointer : public std::false_type{ };
+
+template<typename TArgs>
+struct is_pointer<TArgs *> : public std::true_type{ };
+
 } // detail
 
 namespace stack {
 namespace detail {
-template<typename T, typename Key, typename... Args>
+template<typename T, typename Key, typename... Args, typename std::enable_if<not(sol::detail::is_pointer<T>::value), int>::type = 0>
 inline void push_userdata(lua_State* L, Key&& metatablekey, Args&&... args) {
     T* pdatum = static_cast<T*>(lua_newuserdata(L, sizeof(T)));
     std::allocator<T> alloc{};
     alloc.construct(pdatum, std::forward<Args>(args)...);
     luaL_getmetatable(L, std::addressof(metatablekey[0]));
     lua_setmetatable(L, -2);
+}
+
+template<typename T, typename Key, typename TObj, typename... Args, typename std::enable_if<sol::detail::is_pointer<T>::value, int>::type = 0>
+inline void push_userdata(lua_State* L, Key&& metatablekey, TObj obj, Args&&... args) {
+    if (obj == nullptr) {
+        lua_pushnil(L);
+    }
+    else {
+        T* pdatum = static_cast<T*>(lua_newuserdata(L, sizeof(T)));
+        std::allocator<T> alloc{};
+        alloc.construct(pdatum, std::forward<TObj>(obj), std::forward<Args>(args)...);
+        luaL_getmetatable(L, std::addressof(metatablekey[0]));
+        lua_setmetatable(L, -2);
+    }
 }
 } // detail
 template<typename T, typename X = void>
@@ -259,7 +279,10 @@ struct pusher {
 template<typename T>
 struct pusher<T*> {
     static void push(lua_State* L, T* obj) {
-        detail::push_userdata<T*>(L, userdata_traits<T*>::metatable, obj);
+        if (obj == nullptr)
+            lua_pushnil(L);
+        else
+            detail::push_userdata<T*>(L, userdata_traits<T*>::metatable, obj);
     }
 };
 
@@ -287,7 +310,10 @@ struct pusher<lua_CFunction> {
 template<>
 struct pusher<void*> {
     static void push(lua_State* L, void* userdata) {
-        lua_pushlightuserdata(L, userdata);
+        if (userdata == nullptr)
+            lua_pushnil(L);
+        else
+            lua_pushlightuserdata(L, userdata);
     }
 };
 
